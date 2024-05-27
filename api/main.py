@@ -6,6 +6,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import datetime
 import time
+import tempfile
+
 
 app = Flask(__name__)
 
@@ -29,7 +31,8 @@ def apply_night_out():
     chrome_options = Options()
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-infobars")
-    chrome_options.add_argument("--user-data-dir=/tmp/user-data")
+    temp_dir = tempfile.TemporaryDirectory()
+    chrome_options.add_argument(f"--user-data-dir={temp_dir.name}")
     driver = webdriver.Chrome(options=chrome_options)
 
     try:
