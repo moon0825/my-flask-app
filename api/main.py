@@ -29,6 +29,7 @@ def apply_night_out():
     chrome_options = Options()
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-infobars")
+    chrome_options.add_argument("--user-data-dir=/tmp/user-data")
     driver = webdriver.Chrome(options=chrome_options)
 
     try:
