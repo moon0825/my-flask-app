@@ -1,18 +1,13 @@
 from flask import Flask, request, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import datetime
 import time
+
 app = Flask(__name__)
-
-# 오늘 날짜
-today = datetime.date.today()
-
-# 신청날의 다음날 계산
-next_day = today + datetime.timedelta(days=1)
 
 @app.route('/api/apply-night-out', methods=['POST'])
 def apply_night_out():
@@ -23,9 +18,12 @@ def apply_night_out():
 
     username = data['username']
     password = data['password']
-    name = data['name']
-    room = data['room']
     destination = data['destination']
+
+    # 신청일 가져오기
+    application_date_str = data['application_date']
+    application_date = datetime.datetime.strptime(application_date_str, "%Y-%m-%d")
+    next_day = application_date + datetime.timedelta(days=1)
 
     # Selenium 설정
     chrome_options = Options()
@@ -34,8 +32,6 @@ def apply_night_out():
     driver = webdriver.Chrome(options=chrome_options)
 
     try:
-
-
         # 로그인 페이지 열기
         driver.get("https://jeonju.jbiles.or.kr/bbs/login.php")
         time.sleep(1)
@@ -51,16 +47,9 @@ def apply_night_out():
         driver.get("https://jeonju.jbiles.or.kr/bbs/write.php?bo_table=sub03_03")
         time.sleep(2)
         
-
         # 신청 종류 선택
         driver.find_element(By.ID, "wr_7").send_keys("외박")  # 외박 선택
-
-        # driver.find_element(By.ID, "wr_7").click()  # 드롭다운 메뉴 열기
-        # time.sleep(1)  # 대기
-        # driver.find_element(By.XPATH, "//option[contains(text(), '외박')]").click()  # 외박 선택
         time.sleep(1)  # 대기
-
-
 
         # 행선지 선택
         driver.find_element(By.ID, "wr_3").click()  # 드롭다운 메뉴 열기
@@ -68,44 +57,25 @@ def apply_night_out():
         driver.find_element(By.XPATH, "//option[contains(text(), '본가')]").click()  # 행선지 선택
         time.sleep(1)  # 대기
 
-        # 신청일 입력
-        driver.find_element(By.ID, "wr_4").send_keys(datetime.now().strftime("%Y-%m-%d"))
-        time.sleep(1)  # 입력 대기
-
-
         # 귀사 예정일 입력란 클릭
         driver.find_element(By.ID, "wr_5").click()
         time.sleep(1)  # 대기
 
-            # 달력에서 사용자가 입력한 날짜의 년도와 월을 선택
-        while True:
-            calendar_year = int(driver.find_element(By.CLASS_NAME, "ui-datepicker-year").text)
-            calendar_month = datetime.datetime.strptime(driver.find_element(By.CLASS_NAME, "ui-datepicker-month").text, "%B").month
-
-            if calendar_year == year and calendar_month == month:
-                break
-            elif target_date < today:
-                print("이미 지난 날짜입니다. 유효한 날짜를 다시 입력하세요.")
-                driver.quit()
-                exit()
-            elif calendar_year < year or (calendar_year == year and calendar_month < month):
-                # 다음 달로 이동
-                driver.find_element(By.CLASS_NAME, "ui-datepicker-next").click()
-            else:
-                # 이전 달로 이동
-                driver.find_element(By.CLASS_NAME, "ui-datepicker-prev").click()
-    
-        # 사용자가 입력한 날짜 선택
-        driver.find_element(By.XPATH, f"//a[contains(text(), '{day}')]").click()  # 귀사 예정일 선택
-        time.sleep(1)  # 대기
-
+        # 달력에서 년도 선택
+        Select(driver.find_element(By.CLASS_NAME, "ui-datepicker-year")).select_by_value(str(next_day.year))
+        time.sleep(1)
+        
+        # 달력에서 월 선택
+        Select(driver.find_element(By.CLASS_NAME, "ui-datepicker-month")).select_by_value(str(next_day.month - 1))  # 월은 0부터 시작
+        time.sleep(1)
+        
         # 달력에서 다음날 날짜 선택
-        driver.find_element(By.XPATH, f"//a[contains(text(), '{next_day.day}')]").click()  # 귀사 예정일 선택
+        driver.find_element(By.XPATH, f"//a[text()='{next_day.day}']").click()
         time.sleep(1)  # 대기
 
         # 사유 입력
         driver.find_element(By.ID, "wr_content").send_keys("외박 신청합니다.")
-        time.sleep(1)  # 입력 대기z
+        time.sleep(1)  # 입력 대기
 
         # 작성완료 버튼 클릭
         driver.find_element(By.ID, "btn_submit").click()
@@ -118,11 +88,10 @@ def apply_night_out():
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         driver.quit()
-        
+
 @app.errorhandler(500)
 def internal_server_error(e):
     return jsonify({"status": "error", "message": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
