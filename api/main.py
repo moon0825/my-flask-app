@@ -118,6 +118,10 @@ def apply_night_out():
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         driver.quit()
+        
+@app.errorhandler(500)
+def internal_server_error(e):
+    return jsonify({"status": "error", "message": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
